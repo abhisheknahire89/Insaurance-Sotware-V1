@@ -1,0 +1,233 @@
+import type { ReactElement } from 'react';
+
+export enum UserRole {
+  DOCTOR = 'Doctor',
+}
+
+export type Sender = 'USER' | 'AI';
+
+export interface Citation {
+  uri: string;
+  title: string;
+}
+
+export interface DoctorProfile {
+    qualification: 'MBBS' | 'BAMS' | 'BHMS';
+    canPrescribeAllopathic: 'yes' | 'limited' | 'no';
+}
+
+// Types for Structured AI Responses
+export interface DdxItem {
+  diagnosis: string;
+  rationale: string;
+  confidence: 'High' | 'Medium' | 'Low';
+}
+
+// Doctor-specific types
+export interface LabParameter {
+  parameter: string;
+  value: string;
+  referenceRange: string;
+  interpretation: string;
+  urgency: 'Normal' | 'Abnormal' | 'Critical';
+}
+
+export interface LabResultAnalysis {
+  overallInterpretation: string;
+  results: LabParameter[];
+}
+
+export interface MedicalCode {
+  code: string;
+  description: string;
+}
+
+export interface MedicalCodeResult {
+  query: string;
+  codes: MedicalCode[];
+}
+
+export interface HandoutSection {
+  heading: string;
+  content: string;
+}
+
+export interface PatientHandout {
+  title: string;
+  introduction: string;
+  sections: HandoutSection[];
+  disclaimer: string;
+}
+
+export type LabParameterInput = {
+    name: string;
+    value: string;
+    units: string;
+    referenceRange: string;
+};
+
+// --- NEW: Co-Pilot Suggestion Types ---
+export interface CoPilotRefinementSuggestion {
+  label: string;
+  why: string;
+  examplePrompt: string;
+}
+
+export interface CoPilotFollowUpQuestion {
+  category: 'For Patient' | 'For EMR' | 'For AI';
+  question: string;
+}
+
+export interface CoPilotRecommendedTest {
+  testName: string;
+  priority: 'High' | 'Medium' | 'Low';
+  rationale: string;
+}
+
+export interface CoPilotEvidence {
+  citation: string;
+  url?: string;
+}
+
+export interface CoPilotSuggestion {
+  differentials: DdxItem[];
+  refinementSuggestions: CoPilotRefinementSuggestion[];
+  followUpQuestions: CoPilotFollowUpQuestion[];
+  recommendedTests: CoPilotRecommendedTest[];
+  managementNextSteps: string[];
+  evidenceAndCitations: CoPilotEvidence[];
+}
+
+
+export type StructuredDataType = 
+  | { type: 'ddx'; data: DdxItem[]; summary: string }
+  | { type: 'lab'; data: LabResultAnalysis; summary: string }
+  | { type: 'billing'; data: MedicalCodeResult; summary: string }
+  | { type: 'handout'; data: PatientHandout; summary: string }
+  | { type: 'copilot'; data: CoPilotSuggestion; summary: string };
+
+
+export interface Message {
+  id: string;
+  sender: Sender;
+  text: string;
+  citations?: Citation[];
+  structuredData?: StructuredDataType;
+  feedback?: 'good' | 'bad' | null;
+  // --- NEW: Safety & Audit Fields ---
+  source_protocol_id?: string;
+  source_protocol_last_reviewed?: string; // New field for FOGSI meeting
+  action_type?: 'Informational' | 'Requires Clinician Confirmation';
+  is_confirmed?: boolean;
+}
+
+export interface Chat {
+  id:string;
+  title: string;
+  messages: Message[];
+  userRole: UserRole;
+  gptId?: string;
+}
+
+export interface PreCodedGpt {
+  id: string;
+  title: string;
+  description: string;
+  // FIX: Changed JSX.Element to ReactElement to avoid a TypeScript error where the JSX namespace is not found in .ts files.
+  icon: ReactElement;
+  roles: UserRole[];
+  customComponentId?: 'LabResultAnalysis';
+}
+
+// Types for Scribe Session
+export type ScribeInsightCategory = 'Differential Diagnosis' | 'Questions to Ask' | 'Labs to Consider' | 'General Note';
+
+export interface ScribeInsightBlock {
+    category: ScribeInsightCategory;
+    points: string[];
+}
+
+export interface TranscriptEntry {
+    id: string;
+    speaker: 'Doctor' | 'Patient';
+    text: string;
+    isProcessing?: boolean;
+}
+
+// --- NEW: Clinical Knowledge Base Schema (CDSS Grade) ---
+
+export interface ProtocolReviewer {
+  name: string;
+  date: string;
+  comments: string;
+}
+
+export interface ProtocolMetadata {
+  version: string;
+  date_effective: string;
+  last_reviewed: string;
+  authors: string[];
+  institution: string;
+  jurisdiction: string[];
+  scope: string;
+  'use_if_conditions': string[];
+  canonical_sources: { name: string; url?: string }[];
+  reviewer_signoff: ProtocolReviewer[];
+  related_protocols?: string[]; // IDs of other related protocols
+}
+
+export interface ProtocolStep {
+  id: string;
+  timing: string; // e.g., "Minute 0-5", "Immediate"
+  title: string;
+  actions: string[];
+  is_critical: boolean;
+  troubleshooting?: string[];
+}
+
+export interface DosingInfo {
+  drug_name: string;
+  brand_names_india: string[];
+  available_strengths: string[];
+  formula: string; // e.g., "4g IV", "1g/hr"
+  route: string;
+  dilution_instructions: string;
+  administration_details: string;
+  max_dose?: string;
+  monitoring: string[];
+  contraindications?: string[];
+  reversal_agent?: string;
+}
+
+export interface EscalationTrigger {
+  condition: string;
+  action: string;
+  requires_confirmation: boolean;
+}
+
+export interface MonitoringParameter {
+    parameter: string;
+    frequency: string;
+    normal_range?: string;
+}
+
+export interface MonitoringTemplate {
+    title: string;
+    parameters: MonitoringParameter[];
+    alert_triggers: { condition: string, action: string }[];
+}
+
+
+export interface ClinicalProtocol {
+  id: string;
+  title: string;
+  metadata: ProtocolMetadata;
+  preconditions: string[];
+  settings: ('Primary' | 'Secondary' | 'Tertiary')[];
+  stepwise_actions: ProtocolStep[];
+  dosing_table: DosingInfo[];
+  monitoring_template: MonitoringTemplate;
+  contraindications_general: string[];
+  escalation_triggers: EscalationTrigger[];
+  references: { citation: string; url?: string }[];
+}
